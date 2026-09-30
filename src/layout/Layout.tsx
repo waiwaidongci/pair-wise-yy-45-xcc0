@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import {
+  Alert,
   AppBar,
   Box,
-  Chip,
+  Button,
   Drawer,
   IconButton,
   List,
   ListItemButton,
   ListItemText,
   Toolbar,
-  Tooltip,
   Typography,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
@@ -20,6 +20,9 @@ import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
 import CompareArrowsOutlinedIcon from '@mui/icons-material/CompareArrowsOutlined'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import CloudDoneOutlinedIcon from '@mui/icons-material/CloudDoneOutlined'
+import RestartAltOutlinedIcon from '@mui/icons-material/RestartAltOutlined'
+import { useAppDispatch, useAppSelector } from '../app/hooks'
+import { retryMigration } from '../features/developmentSlice'
 
 const nav = [
   { to: '/', label: '开发总览', icon: <DashboardOutlinedIcon /> },
@@ -27,6 +30,26 @@ const nav = [
   { to: '/review', label: '样品评审', icon: <CompareArrowsOutlinedIcon /> },
   { to: '/history', label: '修订历史', icon: <HistoryOutlinedIcon /> },
 ]
+
+function MigrationBanner() {
+  const dispatch = useAppDispatch()
+  const migration = useAppSelector((state) => state.development.migration)
+  if (migration.status !== 'failed') return null
+  return (
+    <Alert
+      severity="error"
+      variant="filled"
+      sx={{ borderRadius: 0 }}
+      action={
+        <Button color="inherit" size="small" startIcon={<RestartAltOutlinedIcon />} onClick={() => dispatch(retryMigration())}>
+          重试迁移
+        </Button>
+      }
+    >
+      旧草稿按打样批次迁移失败，原草稿已完整保留、未被覆盖：{migration.error}
+    </Alert>
+  )
+}
 
 export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -88,6 +111,7 @@ export default function Layout() {
         </Drawer>
       </Box>
       <Box component="main" sx={{ flex: 1, minWidth: 0, pt: { xs: '52px', md: 0 } }}>
+        <MigrationBanner />
         <Outlet />
       </Box>
     </Box>

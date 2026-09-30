@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
-import type { Annotation, Sample } from '../api/types'
+import type { Annotation, RoundId, Sample } from '../api/types'
 
 export const samplingApi = createApi({
   reducerPath: 'samplingApi',
@@ -14,7 +14,10 @@ export const samplingApi = createApi({
       query: (id) => `api/samples/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'Sample', id }],
     }),
-    addAnnotation: builder.mutation<Sample, { sampleId: string; annotation: Omit<Annotation, 'id' | 'author' | 'status'> }>({
+    addAnnotation: builder.mutation<
+      Sample,
+      { sampleId: string; annotation: Omit<Annotation, 'id' | 'author' | 'status'> & { batchId: RoundId } }
+    >({
       query: ({ sampleId, annotation }) => ({
         url: `api/samples/${sampleId}/annotations`,
         method: 'POST',

@@ -10,10 +10,15 @@ export const handlers = [
     return sample ? HttpResponse.json(sample) : new HttpResponse(null, { status: 404 })
   }),
   http.post('/api/samples/:id/annotations', async ({ params, request }) => {
-    const body = (await request.json()) as { x: number; y: number; part: string; content: string }
+    const body = (await request.json()) as { x: number; y: number; part: string; content: string; batchId: '第一轮' | '第二轮' | '第三轮' }
     const sample = samples.find((item) => item.id === params.id)
     if (!sample) return new HttpResponse(null, { status: 404 })
-    sample.annotations.push({ id: `AN-${Date.now()}`, author: '当前用户', status: '待处理', ...body })
+    sample.batches[body.batchId].annotations.push({
+      id: `AN-${Date.now()}`,
+      author: '当前用户',
+      status: '待处理',
+      ...body,
+    })
     return HttpResponse.json(sample, { status: 201 })
   }),
   http.post('/api/samples/:id/comments', async ({ params, request }) => {
