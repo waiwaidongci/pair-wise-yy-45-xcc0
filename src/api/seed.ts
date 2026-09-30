@@ -1,4 +1,4 @@
-import type { Sample } from './types'
+import type { OldSample } from './types'
 
 const measurements = (offset = 0) => [
   { key: 'chest', name: '胸围', spec: 108, actual: 108 + offset, tolerance: 1.5 },
@@ -9,7 +9,7 @@ const measurements = (offset = 0) => [
   { key: 'sleeve', name: '袖长', spec: 61, actual: 60.7 + offset, tolerance: 1 },
 ]
 
-export const seedSamples: Sample[] = [
+export const seedSamples: OldSample[] = [
   {
     id: 'SMP-26018',
     styleCode: 'WR-26AW-018',

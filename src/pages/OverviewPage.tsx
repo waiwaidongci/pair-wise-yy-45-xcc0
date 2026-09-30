@@ -2,19 +2,27 @@ import { Box, Button, Chip, LinearProgress, Stack, Typography } from '@mui/mater
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { useNavigate } from 'react-router-dom'
 import { useAppSelector } from '../app/hooks'
+import type { Sample, SamplingBatch } from '../api/types'
+
+function effectiveBatch(sample: Sample): SamplingBatch {
+  return sample.batches.find((batch) => batch.id === sample.effectiveBatchId) ?? sample.batches[sample.batches.length - 1]
+}
 
 export default function OverviewPage() {
   const samples = useAppSelector((state) => state.development.samples)
   const navigate = useNavigate()
-  const pendingProposals = samples.reduce((sum, item) => sum + item.proposals.filter((proposal) => proposal.status === '待决定').length, 0)
-  const pendingAnnotations = samples.reduce((sum, item) => sum + item.annotations.filter((annotation) => annotation.status === '待处理').length, 0)
+
+  // 总览只采用当前生效批次
+  const effective = samples.map(effectiveBatch)
+  const pendingProposals = effective.reduce((sum, batch) => sum + batch.proposals.filter((proposal) => proposal.status === '待决定').length, 0)
+  const pendingAnnotations = effective.reduce((sum, batch) => sum + batch.annotations.filter((annotation) => annotation.status === '待处理').length, 0)
+  const pendingRevisions = effective.reduce((sum, batch) => sum + batch.pendingRevisions.filter((revision) => revision.status === '待审').length, 0)
   const averagePass = Math.round(
-    (samples.reduce((sum, sample) => {
-      const measurements = sample.measurements['第三轮']
-      const passed = measurements.filter((item) => Math.abs(item.actual - item.spec) <= item.tolerance).length
-      return sum + passed / measurements.length
+    (effective.reduce((sum, batch) => {
+      const passed = batch.measurements.filter((item) => Math.abs(item.actual - item.spec) <= item.tolerance).length
+      return sum + passed / batch.measurements.length
     }, 0) /
-      samples.length) *
+      effective.length) *
       100,
   )
 
@@ -24,7 +32,7 @@ export default function OverviewPage() {
         <Box>
           <Typography className="eyebrow">PRODUCT DEVELOPMENT / 产品开发</Typography>
           <Typography component="h1" fontWeight={800}>打样轮次总览</Typography>
-          <Typography color="text.secondary">关注超差、待决方案与审核节奏，所有数据来自本地 MSW 服务。</Typography>
+          <Typography color="text.secondary">仅统计当前生效批次的尺寸达标、待决方案、待审修订与审核节奏。</Typography>
         </Box>
         <Button variant="contained" onClick={() => navigate('/review')}>进入样衣评审</Button>
       </Box>
@@ -32,9 +40,9 @@ export default function OverviewPage() {
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', lg: 'repeat(4,1fr)' }, gap: 1.5, mb: 2 }}>
         {[
           ['在开发款式', samples.length, '2 家供应商协同'],
-          ['尺寸达标率', `${averagePass}%`, '第三轮综合结果'],
+          ['尺寸达标率', `${averagePass}%`, '当前生效批次综合结果'],
           ['待决定改版', pendingProposals, '需负责人采纳'],
-          ['未关闭批注', pendingAnnotations, '包含尺寸与工艺'],
+          ['待审修订', pendingRevisions + pendingAnnotations, '锁定后新增，未改已确认内容'],
         ].map(([label, value, hint]) => (
           <Box className="panel" key={String(label)} sx={{ p: 2 }}>
             <Typography color="#756f69" fontSize={12}>{label}</Typography>
@@ -51,18 +59,22 @@ export default function OverviewPage() {
             <Button size="small" endIcon={<ArrowForwardIcon />} onClick={() => navigate('/styles')}>全部档案</Button>
           </Box>
           {samples.map((sample) => {
-            const pending = sample.proposals.filter((item) => item.status === '待决定').length + sample.annotations.filter((item) => item.status === '待处理').length
-            const third = sample.measurements['第三轮']
-            const passed = third.filter((item) => Math.abs(item.actual - item.spec) <= item.tolerance).length
+            const batch = effectiveBatch(sample)
+            const pending =
+              batch.proposals.filter((item) => item.status === '待决定').length +
+              batch.annotations.filter((item) => item.status === '待处理').length +
+              batch.pendingRevisions.filter((item) => item.status === '待审').length
+            const passed = batch.measurements.filter((item) => Math.abs(item.actual - item.spec) <= item.tolerance).length
             return (
               <Box key={sample.id} sx={{ p: 2, borderBottom: '1px solid #efede9', display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr auto' }, gap: 1.5 }}>
                 <Box>
                   <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
                     <Typography fontWeight={800}>{sample.styleCode} · {sample.styleName}</Typography>
                     <Chip size="small" label={sample.status} color={sample.status === '已锁定' ? 'success' : sample.status === '待审核' ? 'warning' : 'default'} />
+                    <Chip size="small" variant="outlined" label={`生效：${batch.name} · ${batch.round}`} />
                   </Stack>
                   <Typography color="text.secondary" fontSize={12} mt={0.8}>{sample.fabric} · {sample.colorway} · 交样 {sample.dueDate}</Typography>
-                  <LinearProgress variant="determinate" value={(passed / third.length) * 100} sx={{ mt: 1.5, maxWidth: 380, height: 6, borderRadius: 8 }} />
+                  <LinearProgress variant="determinate" value={(passed / batch.measurements.length) * 100} sx={{ mt: 1.5, maxWidth: 380, height: 6, borderRadius: 8 }} />
                 </Box>
                 <Box sx={{ alignSelf: 'center', textAlign: { sm: 'right' } }}>
                   <Typography color={pending ? '#ad552d' : '#43856a'} fontWeight={800}>{pending ? `${pending} 项待处理` : '无待办'}</Typography>
@@ -70,9 +82,7 @@ export default function OverviewPage() {
                   <Button
                     size="small"
                     sx={{ mt: 0.8 }}
-                    onClick={() => {
-                      navigate('/review')
-                    }}
+                    onClick={() => navigate('/review')}
                   >
                     查看轮次
                   </Button>

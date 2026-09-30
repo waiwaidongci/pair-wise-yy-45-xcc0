@@ -90,17 +90,27 @@ export default function StylesPage() {
           </Box>
           <Divider />
           <Box sx={{ p: 2 }}>
-            <Typography fontWeight={800} mb={1.2}>样衣轮次与附件</Typography>
+            <Typography fontWeight={800} mb={1.2}>打样批次与附件</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3,1fr)' }, gap: 1 }}>
-              {(['第一轮', '第二轮', '第三轮'] as const).map((round) => (
-                <Box key={round} sx={{ p: 1.5, border: '1px solid #e3e0db', borderRadius: 1 }}>
-                  <Typography fontWeight={800} fontSize={13}>{round}</Typography>
-                  <Typography color="text.secondary" fontSize={11} mt={0.5}>
-                    {selected.measurements[round].length} 项实测 · {round === '第三轮' ? '当前评测' : '历史记录'}
-                  </Typography>
-                  <Button size="small" sx={{ mt: 1 }}>查看实测</Button>
-                </Box>
-              ))}
+              {selected.batches.map((batch) => {
+                const isEffective = batch.id === selected.effectiveBatchId
+                return (
+                  <Box key={batch.id} sx={{ p: 1.5, border: '1px solid', borderColor: isEffective ? '#2d7b72' : '#e3e0db', borderRadius: 1, bgcolor: isEffective ? '#f0f7f5' : '#fff' }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography fontWeight={800} fontSize={13}>{batch.name}</Typography>
+                      <Chip size="small" label={batch.locked ? '已锁定' : '草稿'} color={batch.locked ? 'success' : 'default'} />
+                    </Stack>
+                    <Typography color="text.secondary" fontSize={11} mt={0.5}>
+                      {batch.round} · {batch.measurements.length} 项实测
+                      {isEffective ? ' · 当前生效' : ' · 历史归档'}
+                    </Typography>
+                    <Typography color="text.secondary" fontSize={11} mt={0.3}>
+                      批注 {batch.annotations.length} · 方案 {batch.proposals.length}
+                      {batch.pendingRevisions.filter((r) => r.status === '待审').length > 0 && ` · 待审修订 ${batch.pendingRevisions.filter((r) => r.status === '待审').length}`}
+                    </Typography>
+                  </Box>
+                )
+              })}
             </Box>
             <Stack direction="row" gap={1} flexWrap="wrap" mt={1.5}>
               {selected.attachments.map((file) => (
